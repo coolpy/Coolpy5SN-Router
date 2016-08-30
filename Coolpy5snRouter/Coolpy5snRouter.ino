@@ -48,21 +48,19 @@ void setup() {
   Serial.println("Connect Coolpy5SN Ready");
 
   //注册到sn网关，此步完成即下属所有子网节点直接开始注册、pub、sub操作即可
-  char clientId[0];
-  memcpy(clientId, iClientId, strlen(iClientId));
-  int ptlen = strlen(iClientId) + 6;
+  int client_id_len = strlen(iClientId);
+  int ptlen = client_id_len + 6;
   byte cbuf[ptlen];
-  cbuf[0] = byte(ptlen);
-  cbuf[1] = 0x04;
-  cbuf[2] = 0x0c;
-  cbuf[3] = 0x01;
-  cbuf[4] = 0x00;
-  cbuf[5] = 0x1e;
-  for (int i = 0; i < strlen(iClientId); i++) {
-    cbuf[i + 6] = byte(clientId[i]);
-  }
+  byte *p = cbuf;
+  *p++ = ptlen;
+  *p++ = 0x04;
+  *p++ = 0x0c;
+  *p++ = 0x01;
+  *p++ = 0x00;
+  *p++ = 0x1e;
+  memcpy(p,iClientId,client_id_len);
   if (client.isConnected()) {
-    sint8 res = client.send(cbuf, ptlen);
+    sint8 res = client.send(cbuf, *cbuf);
     if (res != ESPCONN_OK) {
       Serial.print("error sending: ");
       Serial.println(res);
