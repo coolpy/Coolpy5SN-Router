@@ -1,6 +1,8 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266Client.h>
 
+const char* iClientId     = "Client01";
+
 //------------------------------------------
 const char* ssid     = "CMCC_2.4G";
 const char* password = "zrr83320938";
@@ -43,13 +45,34 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
-  Serial.print("Connect Coolpy5SN Ready");
+  Serial.println("Connect Coolpy5SN Ready");
+
+  //注册到sn网关，此步完成即下属所有子网节点直接开始注册、pub、sub操作即可
+  char clientId[0];
+  memcpy(clientId, iClientId, strlen(iClientId));
+  int ptlen = strlen(iClientId) + 6;
+  byte cbuf[ptlen];
+  cbuf[0] = byte(ptlen);
+  cbuf[1] = 0x04;
+  cbuf[2] = 0x0c;
+  cbuf[3] = 0x01;
+  cbuf[4] = 0x00;
+  cbuf[5] = 0x1e;
+  for (int i = 0; i < strlen(iClientId); i++) {
+    cbuf[i + 6] = byte(clientId[i]);
+  }
+  if (client.isConnected()) {
+    sint8 res = client.send(cbuf, ptlen);
+    if (res != ESPCONN_OK) {
+      Serial.print("error sending: ");
+      Serial.println(res);
+    }
+  } else {
+    Serial.println("err udp");
+  }
 
   // set callback functions
   client.onData(onDataCb);
-  client.onConnected(onConnectCb);
-  client.onDisconnected(onDisconnectCb);
-  client.onReconnect(onReconnectCb);
 }
 
 byte *buf;
@@ -105,7 +128,7 @@ void loop() {
           }
           free(buf);
           len = 0;
-          cluser = NULL;         
+          cluser = NULL;
         }
       }
       is_start = 1;
@@ -119,23 +142,4 @@ void loop() {
 void onDataCb(ESP8266Client& client, char *data, unsigned short length)
 {
   Serial.write(data, length);
-}
-
-//------------------------
-// TCP callbacks
-void onConnectCb(ESP8266Client& client)
-{
-  Serial.println("connected to server");
-}
-
-void onDisconnectCb()
-{
-  Serial.println("disconnected from server");
-}
-
-void onReconnectCb(ESP8266Client& client, sint8 err)
-{
-  Serial.print("reconnect CB: ");
-  Serial.println(espErrorToStr(err));
-  Serial.println(espErrorDesc(err));
 }
