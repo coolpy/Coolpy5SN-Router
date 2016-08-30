@@ -14,9 +14,6 @@ ESP8266Client client("192.168.2.61", 1884, UDP);
 //------------------------------------------
 // CB forward declarations
 void onDataCb(ESP8266Client& client, char *data, unsigned short length);
-void onConnectCb(ESP8266Client& client);
-void onDisconnectCb();
-void onReconnectCb(ESP8266Client& client, sint8 err);
 
 //------------------------------------------
 void setup() {
