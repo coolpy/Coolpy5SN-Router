@@ -7,6 +7,10 @@ char hub[] = "5";
 //Node ID(必改项)
 char node[] = "11";
 
+uint16_t inline bswap(const uint16_t iValue) {
+  return (iValue << 8) | (iValue >> 8);
+}
+
 uint16_t MsgId;
 void setup() {
   mySerial.begin(9600);
@@ -15,22 +19,91 @@ void setup() {
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
-  //reg();
   sub();
 }
 
-void reg() {
-  //启动时reg当前节点及mqtt topic的注册
+struct Header {
+  uint8_t length;
+  uint8_t msgType;
+};
+
+//struct Regack {
+//  Header header;
+//  uint16_t topicId;
+//  uint16_t msgId;
+//  uint8_t returnCode;
+//  uint16_t getTopicId() {
+//    return bswap(topicId);
+//  }
+//  uint16_t getMsgId() {
+//    return bswap(msgId);
+//  }
+//};
+
+union Flags {
+  uint8_t byte;
+  struct
+  {
+    bool dup             : 1;
+    uint8_t qos          : 2;
+    bool retain          : 1;
+    bool will            : 1;
+    bool cleanSession    : 1;
+    uint8_t topicIdType  : 2;
+  } bits;
+};
+
+struct Suback {
+  Header header;
+  Flags flags;
+  uint16_t topicId;
+  uint16_t msgId;
+  uint8_t returnCode;
+  uint16_t getTopicId() {
+    return bswap(topicId);
+  }
+  uint16_t getMsgId() {
+    return bswap(msgId);
+  }
+};
+
+uint16_t TopicId;
+void snReader(byte *sn) {
+  //  if (sn[1] == 0x0B) {//regack
+  //    Regack &p = *(Regack *)sn;
+  //    if (p.getMsgId() == bswap(MsgId) && p.returnCode == 0x00) {
+  //      TopicId = p.getTopicId();
+  //    }
+  //  }
+  if (sn[1] == 0x13) {//suback
+    Suback &p = *(Suback *)sn;
+    if (bswap(MsgId) == p.getMsgId() && p.returnCode == 0x00) {
+      TopicId = p.getTopicId();
+    }
+  }else if (sn[1] == 0x0c){
+    mySerial.print(TopicId, DEC);
+  }
+}
+
+void sub() {
   int ukey_len = strlen(ukey);
   int hub_len = strlen(hub);
   int node_len = strlen(node);
-  int ptlen = 8 + ukey_len + hub_len + node_len;
+  int ptlen = 7 + ukey_len + hub_len + node_len;
   byte cbuf[ptlen];
   byte *p = cbuf;
   *p++ = ptlen;
-  *p++ = 0x0A;
-  uint16_t topicid = 0;
-  *((uint16_t *)p) = topicid; p += 2;
+  *p++ = 0x12;
+  byte flags = 0;
+  flags = bitWrite(flags, 7, 1);
+  flags = bitWrite(flags, 6, 0);
+  flags = bitWrite(flags, 5, 0);
+  flags = bitWrite(flags, 4, 0);
+  flags = bitWrite(flags, 3, 0);
+  flags = bitWrite(flags, 2, 0);
+  flags = bitWrite(flags, 1, 0);
+  flags = bitWrite(flags, 0, 0);
+  *p++ = flags;
   MsgId = random(1, 65535);
   *((uint16_t *)p) = MsgId; p += 2;
   memcpy(p, ukey, ukey_len);
@@ -40,6 +113,28 @@ void reg() {
   memcpy(p, node, node_len);
   Serial.write(cbuf, *cbuf);
 }
+
+//void reg() {
+//  //启动时reg当前节点及mqtt topic的注册
+//  int ukey_len = strlen(ukey);
+//  int hub_len = strlen(hub);
+//  int node_len = strlen(node);
+//  int ptlen = 8 + ukey_len + hub_len + node_len;
+//  byte cbuf[ptlen];
+//  byte *p = cbuf;
+//  *p++ = ptlen;
+//  *p++ = 0x0A;
+//  uint16_t topicid = 0;
+//  *((uint16_t *)p) = topicid; p += 2;
+//  MsgId = random(1, 65535);
+//  *((uint16_t *)p) = MsgId; p += 2;
+//  memcpy(p, ukey, ukey_len);
+//  *(p += ukey_len)++ = ':';
+//  memcpy(p, hub, hub_len);
+//  *(p += hub_len)++ = ':';
+//  memcpy(p, node, node_len);
+//  Serial.write(cbuf, *cbuf);
+//}
 
 byte *buf;
 byte *cluser = NULL , *end_point;
@@ -93,97 +188,6 @@ void loop() {
     }
   }
   delay(1);
-}
-
-uint16_t inline bswap(const uint16_t iValue) {
-  return (iValue << 8) | (iValue >> 8);
-}
-
-struct Header {
-  uint8_t length;
-  uint8_t msgType;
-};
-
-struct Regack {
-  Header header;
-  uint16_t topicId;
-  uint16_t msgId;
-  uint8_t returnCode;
-};
-
-union Flags {
-  uint8_t byte;
-  struct
-  {
-    bool dup             : 1;
-    uint8_t qos          : 2;
-    bool retain          : 1;
-    bool will            : 1;
-    bool cleanSession    : 1;
-    uint8_t topicIdType  : 2;
-  } bits;
-};
-
-struct Suback {
-  Header header;
-  Flags flags;
-  uint16_t topicId;
-  uint16_t msgId;
-  uint8_t returnCode;
-
-  uint16_t getTopicId() {
-    return bswap(topicId);
-  }
-
-  uint16_t getMsgId() {
-    return bswap(msgId);
-  }
-};
-
-void snReader(byte *sn) {
-//  if (sn[1] == 0x0B) {//regack
-//    Regack &p = *(Regack *)sn;
-//    if (p.msgId == MsgId) {
-//      if (p.returnCode == 0x00) {
-//        sub();
-//      } else {
-//        mySerial.write("access deny");
-//      }
-//    }
-//  } 
-  if (sn[1] == 0x13) {//suback
-    Suback &p = *(Suback *)sn;
-    mySerial.write(p.getTopicId());
-  }
-}
-
-void sub() {
-  int ukey_len = strlen(ukey);
-  int hub_len = strlen(hub);
-  int node_len = strlen(node);
-  int ptlen = 7 + ukey_len + hub_len + node_len;
-  byte cbuf[ptlen];
-  byte *p = cbuf;
-  *p++ = ptlen;
-  *p++ = 0x12;
-  byte flags = 0;
-  flags = bitWrite(flags, 7, 1);
-  flags = bitWrite(flags, 6, 0);
-  flags = bitWrite(flags, 5, 0);
-  flags = bitWrite(flags, 4, 0);
-  flags = bitWrite(flags, 3, 0);
-  flags = bitWrite(flags, 2, 0);
-  flags = bitWrite(flags, 1, 0);
-  flags = bitWrite(flags, 0, 0);
-  *p++ = flags;
-  MsgId = random(1, 65535);
-  *((uint16_t *)p) = MsgId; p += 2;
-  memcpy(p, ukey, ukey_len);
-  *(p += ukey_len)++ = ':';
-  memcpy(p, hub, hub_len);
-  *(p += hub_len)++ = ':';
-  memcpy(p, node, node_len);
-  Serial.write(cbuf, *cbuf);
 }
 
 
