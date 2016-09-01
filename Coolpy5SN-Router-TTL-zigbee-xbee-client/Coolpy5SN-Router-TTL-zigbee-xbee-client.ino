@@ -30,19 +30,6 @@ struct Header {
   uint8_t msgType;
 };
 
-//struct Regack {
-//  Header header;
-//  uint16_t topicId;
-//  uint16_t msgId;
-//  uint8_t returnCode;
-//  uint16_t getTopicId() {
-//    return bswap(topicId);
-//  }
-//  uint16_t getMsgId() {
-//    return bswap(msgId);
-//  }
-//};
-
 union Flags {
   uint8_t byte;
   struct
@@ -87,12 +74,6 @@ struct Publish {
 String instr;
 uint16_t TopicId;
 void snReader(byte *sn) {
-  //  if (sn[1] == 0x0B) {//regack
-  //    Regack &p = *(Regack *)sn;
-  //    if (p.getMsgId() == bswap(MsgId) && p.returnCode == 0x00) {
-  //      TopicId = p.getTopicId();
-  //    }
-  //  }
   if (sn[1] == 0x13) {//suback
     Suback &p = *(Suback *)sn;
     if (bswap(MsgId) == p.getMsgId() && p.returnCode == 0x00) {
@@ -147,28 +128,6 @@ void sub() {
   memcpy(p, node, node_len);
   Serial.write(cbuf, *cbuf);
 }
-
-//void reg() {
-//  //启动时reg当前节点及mqtt topic的注册
-//  int ukey_len = strlen(ukey);
-//  int hub_len = strlen(hub);
-//  int node_len = strlen(node);
-//  int ptlen = 8 + ukey_len + hub_len + node_len;
-//  byte cbuf[ptlen];
-//  byte *p = cbuf;
-//  *p++ = ptlen;
-//  *p++ = 0x0A;
-//  uint16_t topicid = 0;
-//  *((uint16_t *)p) = topicid; p += 2;
-//  MsgId = random(1, 65535);
-//  *((uint16_t *)p) = MsgId; p += 2;
-//  memcpy(p, ukey, ukey_len);
-//  *(p += ukey_len)++ = ':';
-//  memcpy(p, hub, hub_len);
-//  *(p += hub_len)++ = ':';
-//  memcpy(p, node, node_len);
-//  Serial.write(cbuf, *cbuf);
-//}
 
 byte *buf;
 byte *cluser = NULL , *end_point;
