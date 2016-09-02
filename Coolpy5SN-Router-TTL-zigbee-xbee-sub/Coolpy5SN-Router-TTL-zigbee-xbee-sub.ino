@@ -1,17 +1,13 @@
 #include <SoftwareSerial.h>
 SoftwareSerial mySerial(7, 8); // RX, TX
 //UserKey用户密钥(必改项)
-char ukey[] = "986c17fd-ca85-4b9f-a2ab-1f4748f7effa";
+char ukey[] = "61bd61dc-4f64-4504-b6c5-870011219f22";
 //Hub ID(必改项)
-char hub[] = "5";
+char hub[] = "8";
 //Node ID(必改项)
-char node[] = "11";
+char node[] = "21";
 //示例中要控制的led所在pin
 int led = 5;
-
-uint16_t inline bswap(const uint16_t iValue) {
-  return (iValue << 8) | (iValue >> 8);
-}
 
 uint16_t MsgId;
 void setup() {
@@ -29,19 +25,6 @@ struct Header {
   uint8_t length;
   uint8_t msgType;
 };
-
-//struct Regack {
-//  Header header;
-//  uint16_t topicId;
-//  uint16_t msgId;
-//  uint8_t returnCode;
-//  uint16_t getTopicId() {
-//    return bswap(topicId);
-//  }
-//  uint16_t getMsgId() {
-//    return bswap(msgId);
-//  }
-//};
 
 union Flags {
   uint8_t byte;
@@ -62,12 +45,6 @@ struct Suback {
   uint16_t topicId;
   uint16_t msgId;
   uint8_t returnCode;
-  uint16_t getTopicId() {
-    return bswap(topicId);
-  }
-  uint16_t getMsgId() {
-    return bswap(msgId);
-  }
 };
 
 struct Publish {
@@ -76,31 +53,19 @@ struct Publish {
   uint16_t topicId;
   uint16_t msgId;
   uint8_t data[0];
-  uint16_t getTopicId() {
-    return bswap(topicId);
-  }
-  uint16_t getMsgId() {
-    return bswap(msgId);
-  }
 };
 
 String instr;
 uint16_t TopicId;
 void snReader(byte *sn) {
-  //  if (sn[1] == 0x0B) {//regack
-  //    Regack &p = *(Regack *)sn;
-  //    if (p.getMsgId() == bswap(MsgId) && p.returnCode == 0x00) {
-  //      TopicId = p.getTopicId();
-  //    }
-  //  }
   if (sn[1] == 0x13) {//suback
     Suback &p = *(Suback *)sn;
-    if (bswap(MsgId) == p.getMsgId() && p.returnCode == 0x00) {
-      TopicId = p.getTopicId();
+    if (MsgId == p.msgId && p.returnCode == 0x00) {
+      TopicId = p.topicId;
     }
   } else if (sn[1] == 0x0c) {
     Publish &p = *(Publish *)sn;
-    if (TopicId == p.getTopicId()) {
+    if (TopicId == p.topicId) {
       int pub_len = sn[0] - 7;
       instr = String();
       for (int i = 0; i < pub_len; i++) {
@@ -109,9 +74,9 @@ void snReader(byte *sn) {
       }
       mySerial.println(instr);
       //根据内容判断LED的开或关
-      if (instr.startsWith("{\"HubId\":5,\"NodeId\":11,\"Svalue\":1}")) {
+      if (instr.startsWith("{\"HubId\":8,\"NodeId\":21,\"Svalue\":1}")) {
         digitalWrite(led, HIGH);
-      } else if (instr.startsWith("{\"HubId\":5,\"NodeId\":11,\"Svalue\":2}")) {
+      } else {
         digitalWrite(led, LOW);
       }
       //end
@@ -147,28 +112,6 @@ void sub() {
   memcpy(p, node, node_len);
   Serial.write(cbuf, *cbuf);
 }
-
-//void reg() {
-//  //启动时reg当前节点及mqtt topic的注册
-//  int ukey_len = strlen(ukey);
-//  int hub_len = strlen(hub);
-//  int node_len = strlen(node);
-//  int ptlen = 8 + ukey_len + hub_len + node_len;
-//  byte cbuf[ptlen];
-//  byte *p = cbuf;
-//  *p++ = ptlen;
-//  *p++ = 0x0A;
-//  uint16_t topicid = 0;
-//  *((uint16_t *)p) = topicid; p += 2;
-//  MsgId = random(1, 65535);
-//  *((uint16_t *)p) = MsgId; p += 2;
-//  memcpy(p, ukey, ukey_len);
-//  *(p += ukey_len)++ = ':';
-//  memcpy(p, hub, hub_len);
-//  *(p += hub_len)++ = ':';
-//  memcpy(p, node, node_len);
-//  Serial.write(cbuf, *cbuf);
-//}
 
 byte *buf;
 byte *cluser = NULL , *end_point;
