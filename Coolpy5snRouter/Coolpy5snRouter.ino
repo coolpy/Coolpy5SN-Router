@@ -4,12 +4,12 @@
 const char* iClientId     = "Client01";
 
 //------------------------------------------
-const char* ssid     = "CMCC_2.4G";
-const char* password = "zrr83320938";
+const char* ssid     = "YMS_805_1";
+const char* password = "yms#0805";
 
 
 // create a UDP client
-ESP8266Client client("192.168.2.61", 1884, UDP);
+ESP8266Client client("192.168.1.102", 1884, UDP);
 
 //------------------------------------------
 // CB forward declarations
