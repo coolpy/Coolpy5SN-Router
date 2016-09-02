@@ -6,12 +6,9 @@ char ukey[] = "986c17fd-ca85-4b9f-a2ab-1f4748f7effa";
 char hub[] = "6";
 //Node ID(必改项)
 char node[] = "14";
-//示例中要控制的led所在pin
-int led = 5;
 
 uint16_t MsgId;
 void setup() {
-  pinMode(led, OUTPUT);
   mySerial.begin(9600);
   randomSeed(analogRead(0));
   Serial.begin(9600);
@@ -39,6 +36,7 @@ void snReader(byte *sn) {
     Regack &p = *(Regack *)sn;
     if (p.msgId == MsgId && p.returnCode == 0x00) {
       TopicId = p.topicId;
+      //要上传的数据
       char* postval = "{\"Value\":123}";
       pub(postval);
     }
